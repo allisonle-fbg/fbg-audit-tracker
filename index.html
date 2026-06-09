@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FBG Audit Request Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:#0d1117; --surface:#161b22; --surface2:#1c2333; --border:#30363d; --border2:#21262d;
+  --text:#e6edf3; --muted:#7d8590; --dim:#484f58;
+  --accent:#58a6ff; --accent-bg:rgba(88,166,255,.12);
+  --open:#f0883e;    --open-bg:rgba(240,136,62,.12);
+  --gdrive:#3fb950;  --gdrive-bg:rgba(63,185,80,.12);
+  --kpmg:#58a6ff;    --kpmg-bg:rgba(88,166,255,.12);
+  --followup:#d29922;--followup-bg:rgba(210,153,34,.12);
+  --closed:#6e7681;  --closed-bg:rgba(110,118,129,.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* TOPBAR */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:28px;height:28px;background:linear-gradient(135deg,#58a6ff,#3fb950);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:12px;color:#fff}
+.brand-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px}
+.brand-sub{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+.audit-tabs{display:flex;gap:6px}
+.audit-tab{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;border:1px solid var(--border);color:var(--muted);background:transparent;transition:all .15s}
+.audit-tab.active{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.audit-tab.dim{opacity:.35;cursor:default;pointer-events:none}
+
+/* LAYOUT */
+.layout{display:flex;flex:1;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:210px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:12px 0}
+.sb-label{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);padding:4px 14px 5px;font-family:'DM Mono',monospace}
+.sb-item{display:flex;align-items:center;justify-content:space-between;padding:5px 14px;cursor:pointer;font-size:12px;color:var(--muted);border-left:2px solid transparent;transition:all .1s}
+.sb-item:hover{background:var(--surface2);color:var(--text)}
+.sb-item.active{background:var(--accent-bg);color:var(--accent);border-left-color:var(--accent)}
+.sb-count{font-size:11px;font-family:'DM Mono',monospace;color:var(--dim)}
+.sb-item.active .sb-count{color:var(--accent)}
+.sb-divider{height:1px;background:var(--border2);margin:7px 14px}
+.sb-avatar{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* INNER TABS */
+.inner-tabs{display:flex;padding:12px 20px 0;border-bottom:1px solid var(--border);flex-shrink:0}
+.inner-tab{padding:7px 14px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.inner-tab:hover{color:var(--text)}
+.inner-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* SCROLLABLE CONTENT */
+.content{flex:1;overflow-y:auto}
+
+/* STATS */
+.stats{display:flex;gap:10px;padding:16px 20px 0;flex-wrap:wrap}
+.stat{flex:1;min-width:100px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+.stat-label{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.3px;margin-bottom:3px}
+.stat-value{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;line-height:1}
+.stat-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.stat.s-open .stat-value{color:var(--open)}
+.stat.s-gdrive .stat-value{color:var(--gdrive)}
+.stat.s-kpmg .stat-value{color:var(--kpmg)}
+.stat.s-followup .stat-value{color:var(--followup)}
+.stat.s-closed .stat-value{color:var(--closed)}
+
+/* PROGRESS */
+.prog-wrap{padding:12px 20px 0}
+.prog-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 14px}
+.prog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.prog-title{font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);letter-spacing:.3px}
+.prog-pct{font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--kpmg)}
+.prog-track{height:5px;background:var(--surface2);border-radius:99px;display:flex;gap:1px;overflow:hidden}
+.prog-seg{height:100%;border-radius:99px}
+
+/* TOOLBAR */
+.toolbar{padding:12px 20px 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+.search-wrap{position:relative;flex:1;min-width:180px;max-width:300px}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:12px;pointer-events:none}
+.search{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 9px 6px 28px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
+.search:focus{border-color:var(--accent)}
+.search::placeholder{color:var(--dim)}
+.filter{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 9px;font-size:12px;font-family:'DM Sans',sans-serif;outline:none;cursor:pointer}
+.filter option{background:var(--surface2)}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.row-count{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);padding:4px 10px;background:var(--surface);border:1px solid var(--border);border-radius:99px}
+.sync-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);transition:opacity 1s}
+
+/* TABLE */
+.table-wrap{padding:0 20px 20px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{text-align:left;padding:7px 10px;font-size:9px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--dim);font-family:'DM Mono',monospace;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg);position:sticky;top:0;z-index:5}
+tbody tr{border-bottom:1px solid var(--border2);transition:background .1s;cursor:pointer}
+tbody tr:hover{background:var(--surface2)}
+tbody tr.hidden{display:none}
+td{padding:9px 10px;vertical-align:middle}
+.td-id{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);white-space:nowrap;width:48px}
+.td-name{font-weight:500;color:var(--text);min-width:170px;max-width:220px}
+.td-cat{color:var(--muted);font-size:11px;min-width:150px}
+.td-owner{white-space:nowrap;min-width:120px}
+.td-due{font-family:'DM Mono',monospace;font-size:11px;white-space:nowrap;width:90px}
+.td-type{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);width:40px}
+.td-status{width:155px}
+.td-link{width:40px;text-align:center}
+.due-over{color:#f85149}
+.due-soon{color:var(--followup)}
+.due-ok{color:var(--muted)}
+.owner-cell{display:flex;align-items:center;gap:6px}
+.avatar{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0}
+.owner-name{font-size:11px;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:500;white-space:nowrap;border:1px solid transparent}
+.pill-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.p-open{background:var(--open-bg);color:var(--open);border-color:rgba(240,136,62,.25)}
+.p-open .pill-dot{background:var(--open)}
+.p-gdrive{background:var(--gdrive-bg);color:var(--gdrive);border-color:rgba(63,185,80,.25)}
+.p-gdrive .pill-dot{background:var(--gdrive)}
+.p-kpmg{background:var(--kpmg-bg);color:var(--kpmg);border-color:rgba(88,166,255,.25)}
+.p-kpmg .pill-dot{background:var(--kpmg)}
+.p-followup{background:var(--followup-bg);color:var(--followup);border-color:rgba(210,153,34,.25)}
+.p-followup .pill-dot{background:var(--followup)}
+.p-closed{background:var(--closed-bg);color:var(--closed);border-color:rgba(110,118,129,.25)}
+.p-closed .pill-dot{background:var(--closed)}
+.drive-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:5px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);text-decoration:none;font-size:12px;transition:all .15s}
+.drive-btn:hover{background:var(--gdrive-bg);border-color:var(--gdrive);color:var(--gdrive)}
+.empty{padding:50px 20px;text-align:center;color:var(--muted)}
+
+/* OWNER DASHBOARD */
+.owner-grid{padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.owner-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:border-color .15s}
+.owner-card:hover{border-color:var(--accent)}
+.oc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.oc-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.oc-name{font-family:'Syne',sans-serif;font-weight:700;font-size:13px}
+.oc-total{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+.oc-bars{display:flex;flex-direction:column;gap:4px}
+.oc-bar-row{display:flex;align-items:center;gap:6px}
+.oc-bar-label{font-size:10px;color:var(--muted);width:120px;flex-shrink:0}
+.oc-bar-track{flex:1;height:4px;background:var(--surface2);border-radius:99px;overflow:hidden}
+.oc-bar-fill{height:100%;border-radius:99px}
+.oc-bar-n{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);width:16px;text-align:right}
+
+/* MODAL */
+.backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;backdrop-filter:blur(3px);align-items:center;justify-content:center}
+.backdrop.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:540px;max-width:calc(100vw - 32px);max-height:80vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:slideUp .18s ease}
+@keyframes slideUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-hd{padding:18px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.modal-id{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);margin-bottom:3px}
+.modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;line-height:1.3}
+.modal-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 6px;border-radius:4px;line-height:1;transition:all .1s}
+.modal-x:hover{color:var(--text);background:var(--surface2)}
+.modal-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.modal-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.meta-item{background:var(--surface2);border-radius:6px;padding:9px 11px}
+.meta-label{font-size:9px;font-family:'DM Mono',monospace;color:var(--dim);letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px}
+.meta-val{font-size:12px;color:var(--text);font-weight:500}
+.desc-label{font-size:9px;font-family:'DM Mono',monospace;color:var(--dim);letter-spacing:.5px;text-transform:uppercase;margin-bottom:5px}
+.desc-text{font-size:12px;color:var(--muted);line-height:1.65;white-space:pre-line}
+.modal-ft{padding:12px 18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-drive{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;background:var(--gdrive-bg);border:1px solid rgba(63,185,80,.3);border-radius:6px;color:var(--gdrive);font-size:11px;font-weight:600;text-decoration:none;transition:all .15s}
+.modal-drive:hover{background:rgba(63,185,80,.2)}
+.modal-close{padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;cursor:pointer;transition:all .15s}
+.modal-close:hover{color:var(--text)}
+
+/* COMING SOON */
+.coming-soon{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted)}
+.cs-icon{font-size:36px;opacity:.25}
+.cs-h{font-family:'Syne',sans-serif;font-weight:700;font-size:18px;color:var(--text);opacity:.4}
+.cs-p{font-size:12px;opacity:.5;text-align:center;max-width:280px}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="brand">
+    <div class="logo">FB</div>
+    <div>
+      <div class="brand-title">Audit Request Tracker</div>
+      <div class="brand-sub">Fanatics Betting &amp; Gaming · FY2026</div>
+    </div>
+  </div>
+  <div class="audit-tabs">
+    <button class="audit-tab active" onclick="switchAudit('itgc',this)">ITGC</button>
+    <button class="audit-tab dim">Regulatory</button>
+    <button class="audit-tab dim">Internal Audit</button>
+    <button class="audit-tab dim">SOX</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-label">Views</div>
+    <div class="sb-item active" id="view-items" onclick="setTab('items',this)">
+      <span>All Items</span><span class="sb-count" id="sb-total"></span>
+    </div>
+    <div class="sb-item" id="view-owners" onclick="setTab('owners',this)">
+      <span>Owner Dashboard</span>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-label">By Status</div>
+    <div class="sb-item" onclick="quickFilter('status','Open',this)"><span>Open</span><span class="sb-count" id="sb-open"></span></div>
+    <div class="sb-item" onclick="quickFilter('status','Uploaded to Google Drive',this)"><span>In Google Drive</span><span class="sb-count" id="sb-gdrive"></span></div>
+    <div class="sb-item" onclick="quickFilter('status','Uploaded to KPMG',this)"><span>Uploaded to KPMG</span><span class="sb-count" id="sb-kpmg"></span></div>
+    <div class="sb-item" onclick="quickFilter('status','Follow-Up Questions',this)"><span>Follow-Up</span><span class="sb-count" id="sb-followup"></span></div>
+    <div class="sb-item" onclick="quickFilter('status','Closed',this)"><span>Closed</span><span class="sb-count" id="sb-closed"></span></div>
+    <div class="sb-divider"></div>
+    <div class="sb-label">By Owner</div>
+    <div id="sb-owners"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- ITGC VIEW -->
+    <div id="view-itgc">
+      <div class="inner-tabs">
+        <div class="inner-tab active" onclick="setInner('items',this)">Items</div>
+        <div class="inner-tab" onclick="setInner('owners',this)">Owner Dashboard</div>
+      </div>
+
+      <!-- ITEMS PANEL -->
+      <div class="content" id="panel-items">
+        <div class="stats" id="stats-bar"></div>
+        <div class="prog-wrap">
+          <div class="prog-box">
+            <div class="prog-head">
+              <span class="prog-title">OVERALL COMPLETION (Uploaded to KPMG + Closed)</span>
+              <span class="prog-pct" id="prog-pct">0%</span>
+            </div>
+            <div class="prog-track" id="prog-track"></div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="search" id="search" type="text" placeholder="Search requests, categories, owners…" oninput="applyFilters()"/>
+          </div>
+          <select class="filter" id="f-cat" onchange="applyFilters()"><option value="">All Categories</option></select>
+          <select class="filter" id="f-owner" onchange="applyFilters()"><option value="">All Owners</option></select>
+          <select class="filter" id="f-status" onchange="applyFilters()">
+            <option value="">All Statuses</option>
+            <option>Open</option>
+            <option>Uploaded to Google Drive</option>
+            <option>Uploaded to KPMG</option>
+            <option>Follow-Up Questions</option>
+            <option>Closed</option>
+          </select>
+          <div class="tb-right">
+            <span class="sync-label" id="sync-label"></span>
+            <span class="row-count" id="row-count"></span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="td-id">#</th>
+                <th class="td-name">Request</th>
+                <th class="td-cat">Category</th>
+                <th class="td-owner">Owner</th>
+                <th class="td-due">Due Date</th>
+                <th class="td-type">Type</th>
+                <th class="td-status">Status</th>
+                <th class="td-link">Drive</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <div class="empty" id="empty" style="display:none">No items match your filters.</div>
+        </div>
+      </div>
+
+      <!-- OWNERS PANEL -->
+      <div class="content" id="panel-owners" style="display:none">
+        <div class="owner-grid" id="owner-grid"></div>
+      </div>
+    </div>
+
+    <!-- COMING SOON VIEW -->
+    <div id="view-coming" style="display:none;flex:1;flex-direction:column">
+      <div class="coming-soon">
+        <div class="cs-icon">🔒</div>
+        <div class="cs-h" id="cs-title">Coming Soon</div>
+        <div class="cs-p">This audit type hasn't been configured yet. Items will appear here once requests are loaded.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="backdrop" id="backdrop" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-id" id="m-id"></div>
+        <div class="modal-title" id="m-title"></div>
+      </div>
+      <button class="modal-x" onclick="closeModalNow()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-meta">
+        <div class="meta-item"><div class="meta-label">Category</div><div class="meta-val" id="m-cat"></div></div>
+        <div class="meta-item"><div class="meta-label">Status</div><div class="meta-val" id="m-status"></div></div>
+        <div class="meta-item"><div class="meta-label">Owner</div><div class="meta-val" id="m-owner"></div></div>
+        <div class="meta-item"><div class="meta-label">Due Date</div><div class="meta-val" id="m-due"></div></div>
+      </div>
+      <div>
+        <div class="desc-label">KPMG Description</div>
+        <div class="desc-text" id="m-desc"></div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <a class="modal-drive" id="m-link" href="#" target="_blank">📁 Open Drive Folder</a>
+      <button class="modal-close" onclick="closeModalNow()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const CSV_URL   = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS3AAS7yAtIDzrglpqzmimFDByY7D_41my3BfBOUbm_YZVYjTrDQHAbLr0NvDRDjh_jTj3eE6_QCxgI/pub?gid=93012850&single=true&output=csv";
+const SHEET_ID  = "1p56lAgPKTFumuph7O5541mGz8fCFE-vwPsrr4X4eK-c";
+const GID       = "93012850";
+const POLL_MS   = 60000;
+
+// ═══════════════════════════════════════════
+// HARDCODED DATA — renders instantly on load
+// Sheet polling updates this every 60 seconds
+// ═══════════════════════════════════════════
+let DATA = [{"id": "1", "category": "General", "name": "IT Policies", "desc": "Please provide a copy of the Fanatics Betting & Gaming policies for the following areas where available: - Passwords - Provisioning & De-provisioning - Privileged Access - User Access Reviews - Change Management - Integration Monitoring", "type": "TOD", "due": "06/26/2026", "owner": "Allison Le", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1-G66DsjUSFLaiHaK0zZnHbbB0Tl8A108", "email": "allison.le@betfanatics.com"}, {"id": "2", "category": "General", "name": "HR Listings", "desc": "Please provide the following HR listings: - Active Employees - New Hires in the audit period - Terminations in the audit period. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count).", "type": "TOE", "due": "09/10/2026", "owner": "", "status": "Open", "link": "https://drive.google.com/drive/folders/1-G66DsjUSFLaiHaK0zZnHbbB0Tl8A108", "email": ""}, {"id": "3.1", "category": "Passwords & Authentication", "name": "Okta Password Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "3.2", "category": "Passwords & Authentication", "name": "Snowflake Password Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "john.diaz@betfanatics.com"}, {"id": "3.3", "category": "Passwords & Authentication", "name": "NATS Password Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "3.4", "category": "Passwords & Authentication", "name": "GitHub Password Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1nverepmUIcHlu6MFexehNgYwlaoPEmDE", "email": "roberto.quezada@betfanatics.com"}, {"id": "3.5", "category": "Passwords & Authentication", "name": "Airflow Password Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "john.diaz@betfanatics.com"}, {"id": "3.6", "category": "Passwords & Authentication", "name": "DataDog Password Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1OEvt5_QTL0-ncUhlHVTLVd5z2skEjPxr", "email": "roberto.quezada@betfanatics.com"}, {"id": "3.7", "category": "Passwords & Authentication", "name": "AWS Password Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1Z_dOH43ClnWkmmfs3IRjiWTVpAgYhVlH", "email": "roberto.quezada@betfanatics.com"}, {"id": "3.8", "category": "Passwords & Authentication", "name": "FireHydrant Password Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Norm Lee", "status": "Open", "link": "https://drive.google.com/drive/folders/1jebDcleFAMtThgCHD0cYhFKCF7PWwCQB", "email": "norm.lee@betfanatics.com"}, {"id": "3.9", "category": "Passwords & Authentication", "name": "Azure Password Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1LqYCzi3nfZs1_d6Lxp1qqczbR_pReZZt", "email": "dominick.demaio@betfanatics.com"}, {"id": "3.10", "category": "Passwords & Authentication", "name": "OddsFactory Passwords Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1ATv_Jw4CSShUPOxz6kVZ-EhjyIJlL193", "email": "dominick.demaio@betfanatics.com"}, {"id": "3.11", "category": "Passwords & Authentication", "name": "Azure DevOps Passwords Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1j7FDfD61k4bZchn415Ks_a3kl34S1yy_", "email": "dominick.demaio@betfanatics.com"}, {"id": "3.12", "category": "Passwords & Authentication", "name": "Kafka Passwords Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Jim Boehmer", "status": "Open", "link": "https://drive.google.com/drive/folders/1g9O0_XGD7pJd4STxsUxQQJ31Er5-jxEv", "email": "jim.boehmer@betfanatics.com"}, {"id": "3.13", "category": "Passwords & Authentication", "name": "Tines Passwords Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1sjCmHoL3fszxjzJaCDElWg8DBqN2KLfZ", "email": "ryan.tran@betfanatics.com"}, {"id": "3.14", "category": "Passwords & Authentication", "name": "Playmaker Passwords Authentication", "desc": "Screenshots of the password parameters configured for the application and/or the authentication method configuration (ex. SSO, SAML, etc)", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "4.1", "category": "Privileged User Access", "name": "Okta User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "ryan.tran@betfanatics.com"}, {"id": "4.2", "category": "Privileged User Access", "name": "Snowflake User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "ryan.tran@betfanatics.com"}, {"id": "4.3", "category": "Privileged User Access", "name": "NATS User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "ryan.tran@betfanatics.com"}, {"id": "4.4", "category": "Privileged User Access", "name": "GitHub User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1nverepmUIcHlu6MFexehNgYwlaoPEmDE", "email": "ryan.tran@betfanatics.com"}, {"id": "4.5", "category": "Privileged User Access", "name": "Airflow User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "ryan.tran@betfanatics.com"}, {"id": "4.6", "category": "Privileged User Access", "name": "DataDog User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1OEvt5_QTL0-ncUhlHVTLVd5z2skEjPxr", "email": "ryan.tran@betfanatics.com"}, {"id": "4.7", "category": "Privileged User Access", "name": "AWS User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count). Please also provide the standard Account Authorizations Report from AWS.", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1Z_dOH43ClnWkmmfs3IRjiWTVpAgYhVlH", "email": "ryan.tran@betfanatics.com"}, {"id": "4.8", "category": "Privileged User Access", "name": "FireHydrant User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1jebDcleFAMtThgCHD0cYhFKCF7PWwCQB", "email": "ryan.tran@betfanatics.com"}, {"id": "4.9", "category": "Privileged User Access", "name": "Azure User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1LqYCzi3nfZs1_d6Lxp1qqczbR_pReZZt", "email": "ryan.tran@betfanatics.com"}, {"id": "4.10", "category": "Privileged User Access", "name": "OddsFactory User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1ATv_Jw4CSShUPOxz6kVZ-EhjyIJlL193", "email": "ryan.tran@betfanatics.com"}, {"id": "4.11", "category": "Privileged User Access", "name": "Azure DevOps User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1j7FDfD61k4bZchn415Ks_a3kl34S1yy_", "email": "ryan.tran@betfanatics.com"}, {"id": "4.12", "category": "Privileged User Access", "name": "Kafka User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1g9O0_XGD7pJd4STxsUxQQJ31Er5-jxEv", "email": "ryan.tran@betfanatics.com"}, {"id": "4.13", "category": "Privileged User Access", "name": "Playmaker User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "ryan.tran@betfanatics.com"}, {"id": "4.14", "category": "Privileged User Access", "name": "Tines User Listing", "desc": "User listing and role assignment from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1sjCmHoL3fszxjzJaCDElWg8DBqN2KLfZ", "email": "ryan.tran@betfanatics.com"}, {"id": "5.1", "category": "Privileged User Access", "name": "Okta Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "ryan.tran@betfanatics.com"}, {"id": "5.2", "category": "Privileged User Access", "name": "Snowflake Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "ryan.tran@betfanatics.com"}, {"id": "5.3", "category": "Privileged User Access", "name": "NATS Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "ryan.tran@betfanatics.com"}, {"id": "5.4", "category": "Privileged User Access", "name": "GitHub Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1nverepmUIcHlu6MFexehNgYwlaoPEmDE", "email": "ryan.tran@betfanatics.com"}, {"id": "5.5", "category": "Privileged User Access", "name": "Airflow Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "ryan.tran@betfanatics.com"}, {"id": "5.6", "category": "Privileged User Access", "name": "DataDog Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1OEvt5_QTL0-ncUhlHVTLVd5z2skEjPxr", "email": "ryan.tran@betfanatics.com"}, {"id": "5.7", "category": "Privileged User Access", "name": "AWS Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1Z_dOH43ClnWkmmfs3IRjiWTVpAgYhVlH", "email": "ryan.tran@betfanatics.com"}, {"id": "5.8", "category": "Privileged User Access", "name": "FireHydrant Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1jebDcleFAMtThgCHD0cYhFKCF7PWwCQB", "email": "ryan.tran@betfanatics.com"}, {"id": "5.9", "category": "Privileged User Access", "name": "Azure Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1LqYCzi3nfZs1_d6Lxp1qqczbR_pReZZt", "email": "ryan.tran@betfanatics.com"}, {"id": "5.10", "category": "Privileged User Access", "name": "OddsFactory Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1ATv_Jw4CSShUPOxz6kVZ-EhjyIJlL193", "email": "ryan.tran@betfanatics.com"}, {"id": "5.11", "category": "Privileged User Access", "name": "Azure DevOps Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1j7FDfD61k4bZchn415Ks_a3kl34S1yy_", "email": "ryan.tran@betfanatics.com"}, {"id": "5.12", "category": "Privileged User Access", "name": "Kafka Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1g9O0_XGD7pJd4STxsUxQQJ31Er5-jxEv", "email": "ryan.tran@betfanatics.com"}, {"id": "5.13", "category": "Privileged User Access", "name": "Tines Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1sjCmHoL3fszxjzJaCDElWg8DBqN2KLfZ", "email": "ryan.tran@betfanatics.com"}, {"id": "5.14", "category": "Privileged User Access", "name": "Playmaker Permission to Role Listing", "desc": "Permission to role listing from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "ryan.tran@betfanatics.com"}, {"id": "6.1", "category": "User Access Provisioning", "name": "Okta Users Created and Modified Listing", "desc": "Listing of users created/modified during the audit period. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOD", "due": "09/10/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "6.2", "category": "User Access Provisioning", "name": "Snowflake Users Created and Modified Listing", "desc": "Listing of users created/modified during the audit period. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOD", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "john.diaz@betfanatics.com"}, {"id": "6.3", "category": "User Access Provisioning", "name": "NATS Users Created and Modified Listing", "desc": "Listing of users created/modified during the audit period. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOD", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "6.4", "category": "User Access Provisioning", "name": "AWS Created and Modified Listing", "desc": "Listing of users created/modified during the audit period. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOD", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1Z_dOH43ClnWkmmfs3IRjiWTVpAgYhVlH", "email": "roberto.quezada@betfanatics.com"}, {"id": "6.5", "category": "User Access Provisioning", "name": "OddsFactory Created and Modified Listing", "desc": "Listing of users created/modified during the audit period. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOD", "due": "09/10/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1ATv_Jw4CSShUPOxz6kVZ-EhjyIJlL193", "email": "dominick.demaio@betfanatics.com"}, {"id": "6.7", "category": "User Access Provisioning", "name": "Playmaker Created and Modified Listing", "desc": "Listing of users created/modified during the audit period. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOD", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "6.8", "category": "User Access Provisioning", "name": "Okta Provisioned Access Samples", "desc": "KPMG will select a sample of provisioned access - for each sample provide: Access Request and Access Approval", "type": "TOE", "due": "09/17/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "6.9", "category": "User Access Provisioning", "name": "Snowflake Provisioned Access Samples", "desc": "KPMG will select a sample of provisioned access - for each sample provide: Access Request and Access Approval", "type": "TOE", "due": "09/17/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "john.diaz@betfanatics.com"}, {"id": "6.10", "category": "User Access Provisioning", "name": "NATS Provisioned Access Samples", "desc": "KPMG will select a sample of provisioned access - for each sample provide: Access Request and Access Approval", "type": "TOE", "due": "09/17/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "6.11", "category": "User Access Provisioning", "name": "AWS Provisioned Access Samples", "desc": "Please provide sample of one AWS access request ticket, including: Access Request and Access Approval", "type": "TOE", "due": "09/17/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1Z_dOH43ClnWkmmfs3IRjiWTVpAgYhVlH", "email": "roberto.quezada@betfanatics.com"}, {"id": "6.12", "category": "User Access Provisioning", "name": "OddsFactory Provisioned Access Samples", "desc": "Sample of one request to assign a user to the OddsFactory Okta group, showing: access requested and approvals", "type": "TOE", "due": "09/17/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1ATv_Jw4CSShUPOxz6kVZ-EhjyIJlL193", "email": "dominick.demaio@betfanatics.com"}, {"id": "6.13", "category": "User Access Provisioning", "name": "Playmaker Provisioned Access Samples", "desc": "KPMG will select a sample of provisioned access - for each sample provide: Access Request and Access Approval", "type": "TOE", "due": "09/17/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "7.1", "category": "User Access Deprovisioning", "name": "Okta Deprovisioned Access Configuration", "desc": "Please provide configuration to revoke access automatically and example of one user that access was revoked in line with the above configuration.", "type": "TOD", "due": "06/26/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "7.2", "category": "User Access Deprovisioning", "name": "Okta Deprovisioned Access Samples", "desc": "KPMG will select a sample of deprovisioned access - for each sample provide evidence of timely access disablement/removal", "type": "TOE", "due": "09/17/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "8.1", "category": "Periodic User Access Review", "name": "Q2 Okta User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "ryan.tran@betfanatics.com"}, {"id": "8.2", "category": "Periodic User Access Review", "name": "Q4 Okta User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "ryan.tran@betfanatics.com"}, {"id": "8.3", "category": "Periodic User Access Review", "name": "Q2 Snowflake User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "ryan.tran@betfanatics.com"}, {"id": "8.4", "category": "Periodic User Access Review", "name": "Q4 Snowflake User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "ryan.tran@betfanatics.com"}, {"id": "8.5", "category": "Periodic User Access Review", "name": "Q2 NATS User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "ryan.tran@betfanatics.com"}, {"id": "8.6", "category": "Periodic User Access Review", "name": "Q4 NATS User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "ryan.tran@betfanatics.com"}, {"id": "8.7", "category": "Periodic User Access Review", "name": "Q2 GitHub User Access Review (incl. Flux)", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1T4eJeDS8ShzvpO1OdiqJhItwK7jz6G9q", "email": "ryan.tran@betfanatics.com"}, {"id": "8.8", "category": "Periodic User Access Review", "name": "Q4 GitHub User Access Review (incl. Flux)", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1T4eJeDS8ShzvpO1OdiqJhItwK7jz6G9q", "email": "ryan.tran@betfanatics.com"}, {"id": "8.9", "category": "Periodic User Access Review", "name": "Q2 Airflow User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "ryan.tran@betfanatics.com"}, {"id": "8.10", "category": "Periodic User Access Review", "name": "Q4 Airflow User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "ryan.tran@betfanatics.com"}, {"id": "8.11", "category": "Periodic User Access Review", "name": "Q2 DataDog User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1OEvt5_QTL0-ncUhlHVTLVd5z2skEjPxr", "email": "ryan.tran@betfanatics.com"}, {"id": "8.12", "category": "Periodic User Access Review", "name": "Q4 DataDog User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1OEvt5_QTL0-ncUhlHVTLVd5z2skEjPxr", "email": "ryan.tran@betfanatics.com"}, {"id": "8.13", "category": "Periodic User Access Review", "name": "Q2 AWS User Access Review (incl. Kafka)", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1g9O0_XGD7pJd4STxsUxQQJ31Er5-jxEv", "email": "ryan.tran@betfanatics.com"}, {"id": "8.14", "category": "Periodic User Access Review", "name": "Q4 AWS User Access Review (incl. Kafka)", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1g9O0_XGD7pJd4STxsUxQQJ31Er5-jxEv", "email": "ryan.tran@betfanatics.com"}, {"id": "8.15", "category": "Periodic User Access Review", "name": "Q2 FireHydrant User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1jebDcleFAMtThgCHD0cYhFKCF7PWwCQB", "email": "ryan.tran@betfanatics.com"}, {"id": "8.16", "category": "Periodic User Access Review", "name": "Q4 FireHydrant User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1jebDcleFAMtThgCHD0cYhFKCF7PWwCQB", "email": "ryan.tran@betfanatics.com"}, {"id": "8.17", "category": "Periodic User Access Review", "name": "Q2 Azure User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1LqYCzi3nfZs1_d6Lxp1qqczbR_pReZZt", "email": "ryan.tran@betfanatics.com"}, {"id": "8.18", "category": "Periodic User Access Review", "name": "Q4 Azure User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1LqYCzi3nfZs1_d6Lxp1qqczbR_pReZZt", "email": "ryan.tran@betfanatics.com"}, {"id": "8.19", "category": "Periodic User Access Review", "name": "Q2 OddsFactory User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1ATv_Jw4CSShUPOxz6kVZ-EhjyIJlL193", "email": "ryan.tran@betfanatics.com"}, {"id": "8.20", "category": "Periodic User Access Review", "name": "Q4 OddsFactory User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1ATv_Jw4CSShUPOxz6kVZ-EhjyIJlL193", "email": "ryan.tran@betfanatics.com"}, {"id": "8.21", "category": "Periodic User Access Review", "name": "Q2 Azure DevOps User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1j7FDfD61k4bZchn415Ks_a3kl34S1yy_", "email": "ryan.tran@betfanatics.com"}, {"id": "8.22", "category": "Periodic User Access Review", "name": "Q4 Azure DevOps User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1j7FDfD61k4bZchn415Ks_a3kl34S1yy_", "email": "ryan.tran@betfanatics.com"}, {"id": "8.23", "category": "Periodic User Access Review", "name": "Q2 Playmaker User Access Review", "desc": "Please provide the Q2 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "ryan.tran@betfanatics.com"}, {"id": "8.24", "category": "Periodic User Access Review", "name": "Q4 Playmaker User Access Review", "desc": "Please provide the Q4 user access review for the audit period and the underlying support (evidence of management approvals, evidence of access removals/reasons, re-generated listings, etc)", "type": "TOE", "due": "12/18/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "ryan.tran@betfanatics.com"}, {"id": "9.1", "category": "Change Management", "name": "Okta Change Management Sample", "desc": "Sample of one Okta change request ticket and evidence of: change requested, approvals, testing performed, testing approval, approval to implement to production", "type": "TOD", "due": "06/26/2026", "owner": "Blaine Schmidt", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "9.2", "category": "Change Management", "name": "Snowflake Change Management Sample", "desc": "Sample of one Snowflake change request to core logic of report that has a corresponding Jira ticket, including: Evidence of Change Request, Evidence of Testing and Approvals, Evidence of final approval for migration into production", "type": "TOD", "due": "06/26/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "john.diaz@betfanatics.com"}, {"id": "9.3", "category": "Change Management", "name": "NATS Change Management Sample", "desc": "KPMG will select a sample of changes - for each sample provide: Evidence of Change Request, Evidence of Testing/Success Approvals, Evidence of final approval for migration into production", "type": "TOD", "due": "09/17/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "9.4", "category": "Change Management", "name": "OddsFactory Change Sample", "desc": "Sample of one OddsFactory Jira change request ticket and Azure Dev Ops / GitHub evidence of: change requested, approvals, testing performed, testing approval, approval to implement to production", "type": "TOD", "due": "06/26/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1ATv_Jw4CSShUPOxz6kVZ-EhjyIJlL193", "email": "dominick.demaio@betfanatics.com"}, {"id": "9.5", "category": "Change Management", "name": "Airflow Change Sample", "desc": "Sample of one Airflow change request ticket and GitHub log to evidence: change requested, approvals, testing performed, testing approval, approval to implement to production", "type": "TOD", "due": "06/26/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "john.diaz@betfanatics.com"}, {"id": "9.6", "category": "Change Management", "name": "DataDog Change Sample", "desc": "Sample of one DataDog change request ticket and GitHub log to evidence: change requested, approvals, testing performed, testing approval, approval to implement to production", "type": "TOD", "due": "06/26/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1OEvt5_QTL0-ncUhlHVTLVd5z2skEjPxr", "email": "roberto.quezada@betfanatics.com"}, {"id": "9.7", "category": "Change Management", "name": "AWS Change Sample", "desc": "Sample of one AWS change request ticket and GitHub log to evidence: change requested, approvals, testing performed, testing approval, approval to implement to production", "type": "TOD", "due": "06/26/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1Z_dOH43ClnWkmmfs3IRjiWTVpAgYhVlH", "email": "roberto.quezada@betfanatics.com"}, {"id": "9.8", "category": "Change Management", "name": "Azure Change Sample", "desc": "Sample of one Azure change request ticket and GitHub log to evidence: change requested, approvals, testing performed, testing approval, approval to implement to production", "type": "TOD", "due": "06/26/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1LqYCzi3nfZs1_d6Lxp1qqczbR_pReZZt", "email": "dominick.demaio@betfanatics.com"}, {"id": "9.9", "category": "Change Management", "name": "ATS Change Sample", "desc": "Sample of one ATS change request ticket and GitHub log to evidence: change requested, approvals, testing performed, testing approval, approval to implement to production", "type": "TOD", "due": "06/26/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "roberto.quezada@betfanatics.com"}, {"id": "9.10", "category": "Change Management", "name": "Tines Change Sample", "desc": "Sample of one Tines change request ticket and GitHub log to evidence: change requested, approvals, testing performed, testing approval, approval to implement to production", "type": "TOD", "due": "06/26/2026", "owner": "Ryan Tran", "status": "Open", "link": "https://drive.google.com/drive/folders/1sjCmHoL3fszxjzJaCDElWg8DBqN2KLfZ", "email": "ryan.tran@betfanatics.com"}, {"id": "9.11", "category": "Change Management", "name": "Playmaker Change Sample", "desc": "Sample of one Playmaker change request ticket and GitHub log to evidence: change requested, approvals, testing performed, testing approval, approval to implement to production", "type": "TOD", "due": "06/26/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "10.1", "category": "Change Management", "name": "Okta Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Blaine Schmidt", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "10.2", "category": "Change Management", "name": "Snowflake Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "john.diaz@betfanatics.com"}, {"id": "10.3", "category": "Change Management", "name": "NATS Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "10.4", "category": "Change Management", "name": "GitHub Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1nverepmUIcHlu6MFexehNgYwlaoPEmDE", "email": "roberto.quezada@betfanatics.com"}, {"id": "10.5", "category": "Change Management", "name": "Airflow Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "john.diaz@betfanatics.com"}, {"id": "10.6", "category": "Change Management", "name": "DataDog Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1OEvt5_QTL0-ncUhlHVTLVd5z2skEjPxr", "email": "roberto.quezada@betfanatics.com"}, {"id": "10.7", "category": "Change Management", "name": "AWS Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1Z_dOH43ClnWkmmfs3IRjiWTVpAgYhVlH", "email": "roberto.quezada@betfanatics.com"}, {"id": "10.8", "category": "Change Management", "name": "Azure Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1LqYCzi3nfZs1_d6Lxp1qqczbR_pReZZt", "email": "dominick.demaio@betfanatics.com"}, {"id": "10.9", "category": "Change Management", "name": "ATS Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Allison Le", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "allison.le@betfanatics.com"}, {"id": "10.10", "category": "Change Management", "name": "Tines Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Allison Le", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1sjCmHoL3fszxjzJaCDElWg8DBqN2KLfZ", "email": "allison.le@betfanatics.com"}, {"id": "10.11", "category": "Change Management", "name": "Playmaker Change Management Log", "desc": "A log of changes made to the system for the audit period to date. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Allison Le", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "allison.le@betfanatics.com"}, {"id": "11.1", "category": "Separation of Environments", "name": "Okta Environments", "desc": "Evidence of separate environments (ex. Dev, Test, and Prod)", "type": "TOE", "due": "09/10/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "11.2", "category": "Separation of Environments", "name": "Snowflake Environments", "desc": "Evidence of separate environments (ex. Dev, Test, and Prod)", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "john.diaz@betfanatics.com"}, {"id": "11.3", "category": "Separation of Environments", "name": "NATS Environments", "desc": "Evidence of separate environments (ex. Dev, Test, and Prod)", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "11.4", "category": "Separation of Environments", "name": "Tines Environments", "desc": "Evidence of separate environments (ex. Dev, Test, and Prod)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1sjCmHoL3fszxjzJaCDElWg8DBqN2KLfZ", "email": "ryan.tran@betfanatics.com"}, {"id": "11.5", "category": "Separation of Environments", "name": "Playmaker Environments", "desc": "Evidence of separate environments (ex. Dev, Test, and Prod)", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "12.1", "category": "Change Management", "name": "GitHub Repositories", "desc": "Document of Mapping of GitHub repositories to in-scope systems (Snowflake, ATS, Kafka, Wallet, Airflow, NATS)", "type": "TOD", "due": "06/26/2026", "owner": "Xhonia Robinson", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1nverepmUIcHlu6MFexehNgYwlaoPEmDE", "email": "xhonia.robinson@betfanatics.com"}, {"id": "12.2", "category": "Change Management", "name": "Change Lookback", "desc": "Please provide evidence of the change management lookback analysis performed through 12/31/2026.", "type": "TOE", "due": "01/06/2027", "owner": "Rebecca Cangey", "status": "Open", "link": "https://drive.google.com/drive/folders/1kRGD1aEspwlh1RH0LqfG0B6t9SE2qR53", "email": "rebecca.cangey@betfanatics.com"}, {"id": "13.1", "category": "Segregation of Duties", "name": "NATS SOD", "desc": "User listing of developers and migrators from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "13.2", "category": "Segregation of Duties", "name": "Tines SOD", "desc": "User listing of developers and migrators from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1sjCmHoL3fszxjzJaCDElWg8DBqN2KLfZ", "email": "ryan.tran@betfanatics.com"}, {"id": "13.3", "category": "Segregation of Duties", "name": "Playmaker SOD", "desc": "User listing of developers and migrators from the system. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "13.4", "category": "Segregation of Duties", "name": "Snowflake Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "john.diaz@betfanatics.com"}, {"id": "13.5", "category": "Segregation of Duties", "name": "NATS Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "13.6", "category": "Segregation of Duties", "name": "GitHub Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1nverepmUIcHlu6MFexehNgYwlaoPEmDE", "email": "roberto.quezada@betfanatics.com"}, {"id": "13.7", "category": "Segregation of Duties", "name": "Airflow Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "john.diaz@betfanatics.com"}, {"id": "13.8", "category": "Segregation of Duties", "name": "DataDog Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1OEvt5_QTL0-ncUhlHVTLVd5z2skEjPxr", "email": "roberto.quezada@betfanatics.com"}, {"id": "13.9", "category": "Segregation of Duties", "name": "AWS Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1Z_dOH43ClnWkmmfs3IRjiWTVpAgYhVlH", "email": "roberto.quezada@betfanatics.com"}, {"id": "13.10", "category": "Segregation of Duties", "name": "Azure Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1LqYCzi3nfZs1_d6Lxp1qqczbR_pReZZt", "email": "dominick.demaio@betfanatics.com"}, {"id": "13.11", "category": "Segregation of Duties", "name": "OddsFactory Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1ATv_Jw4CSShUPOxz6kVZ-EhjyIJlL193", "email": "dominick.demaio@betfanatics.com"}, {"id": "13.12", "category": "Segregation of Duties", "name": "ATS Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "roberto.quezada@betfanatics.com"}, {"id": "13.13", "category": "Segregation of Duties", "name": "Kafka Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Jim Boehmer", "status": "Open", "link": "https://drive.google.com/drive/folders/1g9O0_XGD7pJd4STxsUxQQJ31Er5-jxEv", "email": "jim.boehmer@betfanatics.com"}, {"id": "13.14", "category": "Segregation of Duties", "name": "Tines Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Ryan Tran", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1sjCmHoL3fszxjzJaCDElWg8DBqN2KLfZ", "email": "ryan.tran@betfanatics.com"}, {"id": "13.15", "category": "Segregation of Duties", "name": "Flux CD configuration", "desc": "Evidence of configuration files that define the Flux reconciliation performed across repositories to show it applies to all repos and maintains settings consistently.", "type": "TOD", "due": "06/26/2026", "owner": "Allison Le", "status": "Uploaded to KPMG", "link": "https://drive.google.com/drive/folders/1T4eJeDS8ShzvpO1OdiqJhItwK7jz6G9q", "email": "allison.le@betfanatics.com"}, {"id": "13.16", "category": "Segregation of Duties", "name": "Playmaker Change Management Tools", "desc": "Evidence of: Listing of relevant repositories, screenshots of password/authentication, screenshots of administrative access, project/repository owners, branch protection settings, workflow for approvals for merging to main branch", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "14.1", "category": "Integration Configurations", "name": "Okta Listing of Integrations", "desc": "Please provide a listing of integrations between systems, including: job schedule if scheduled OR configuration if real-time API-based, and configuration of failure notifications", "type": "TOD", "due": "06/26/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "14.3", "category": "Integration Configurations", "name": "NATS Listing of Integrations", "desc": "Please provide a listing of integrations between systems, including: job schedule if scheduled OR configuration if real-time API-based, and configuration of failure notifications", "type": "TOD", "due": "06/26/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "14.4", "category": "Integration Configurations", "name": "Airflow Listing of Integrations", "desc": "Please provide a listing of integrations between systems, including: job schedule if scheduled OR configuration if real-time API-based, configuration of failure notifications. Please make sure Snowflake integrations are included in the list.", "type": "TOD", "due": "06/26/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "john.diaz@betfanatics.com"}, {"id": "14.5", "category": "Integration Configurations", "name": "Playmaker Listing of Integrations", "desc": "Please provide a listing of integrations between systems, including: job schedule if scheduled OR configuration if real-time API-based, and configuration of failure notifications", "type": "TOD", "due": "06/26/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "15.1", "category": "Integration Executions", "name": "Okta Integration Run History", "desc": "Dependent on the integration in scope, please provide a listing of job runs indicating whether the runs were successful or failed.", "type": "TOE", "due": "09/10/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "15.3", "category": "Integration Executions", "name": "NATS Integration Run History", "desc": "Dependent on the integration in scope, please provide a listing of job runs indicating whether the runs were successful or failed.", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "15.4", "category": "Integration Executions", "name": "Airflow Integration Run History", "desc": "Dependent on the integration in scope, please provide a listing of job runs indicating whether the runs were successful or failed. Please make sure Snowflake integrations are included in the list.", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "john.diaz@betfanatics.com"}, {"id": "15.5", "category": "Integration Executions", "name": "Playmaker Integration Run History", "desc": "Dependent on the integration in scope, please provide a listing of job runs indicating whether the runs were successful or failed.", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "16.1", "category": "Integration Executions", "name": "Okta Integration Error Resolution", "desc": "KPMG will select a sample of integration runs. For each sample, provide evidence of success/failures. If failures occurred, evidence of successful re-run on the following date or resolution.", "type": "TOE", "due": "09/10/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "16.3", "category": "Integration Executions", "name": "NATS Integration Error Resolution", "desc": "KPMG will select a sample of integration runs. For each sample, provide evidence of success/failures. If failures occurred, evidence of successful re-run on the following date or resolution.", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "16.4", "category": "Integration Executions", "name": "Airflow Integration Error Resolution", "desc": "KPMG will select a sample of integration runs. For each sample, provide evidence of success/failures. If failures occurred, evidence of successful re-run on the following date or resolution. Please make sure Snowflake integrations are included in the list.", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "john.diaz@betfanatics.com"}, {"id": "16.5", "category": "Integration Executions", "name": "Playmaker Integration Error Resolution", "desc": "KPMG will select a sample of integration runs. For each sample, provide evidence of success/failures. If failures occurred, evidence of successful re-run on the following date or resolution.", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "17.1", "category": "Access to Modify Integrations", "name": "Okta Access to Change Integrations", "desc": "User listing and role assignment from the system of users that can amend integrations. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "17.2", "category": "Access to Modify Integrations", "name": "Snowflake Access to Change Integrations", "desc": "User listing and role assignment from the system of users that can amend integrations. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "john.diaz@betfanatics.com"}, {"id": "17.3", "category": "Access to Modify Integrations", "name": "NATS Access to Change Integrations", "desc": "User listing and role assignment from the system of users that can amend integrations. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/1qM-JRsoenMddei6zJm24ecY6Ox5ORsf2", "email": "sean.roddy@betfanatics.com"}, {"id": "17.4", "category": "Access to Modify Integrations", "name": "Airflow Access to Change Integrations", "desc": "User listing and role assignment from the system of users that can amend integrations. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "john.diaz@betfanatics.com"}, {"id": "17.5", "category": "Access to Modify Integrations", "name": "Playmaker Access to Change Integrations", "desc": "User listing and role assignment from the system of users that can amend integrations. Include screenshots of the listing generation for C&A (report parameters, excerpt of output and record count)", "type": "TOE", "due": "09/10/2026", "owner": "Sean Roddy", "status": "Open", "link": "https://drive.google.com/drive/folders/15QDDcS37NFeQYHpTucwTRN6GCkE68Lbw", "email": "sean.roddy@betfanatics.com"}, {"id": "18.1", "category": "SOC Reports", "name": "Okta SOC Report", "desc": "Relevant SOC1 reports and management's evaluation for Q4", "type": "TOE", "due": "12/18/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}, {"id": "18.2", "category": "SOC Reports", "name": "Snowflake SOC Report", "desc": "Relevant SOC1 reports and management's evaluation for Q4", "type": "TOE", "due": "12/18/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1H55Z9yPbKnX4DEoJy0yNCI7AQdA1DVPn", "email": "john.diaz@betfanatics.com"}, {"id": "18.3", "category": "SOC Reports", "name": "GitHub SOC Report", "desc": "Relevant SOC1 reports and management's evaluation for Q4", "type": "TOE", "due": "12/18/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1nverepmUIcHlu6MFexehNgYwlaoPEmDE", "email": "roberto.quezada@betfanatics.com"}, {"id": "18.4", "category": "SOC Reports", "name": "Airflow SOC Report", "desc": "Relevant SOC1 reports and management's evaluation for Q4", "type": "TOE", "due": "12/18/2026", "owner": "John Diaz", "status": "Open", "link": "https://drive.google.com/drive/folders/1iuU_TbHXrkidJ6DdH9gwcE7XqbzjpjFA", "email": "john.diaz@betfanatics.com"}, {"id": "18.5", "category": "SOC Reports", "name": "DataDog SOC Report", "desc": "Relevant SOC1 reports and management's evaluation for Q4", "type": "TOE", "due": "12/18/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1OEvt5_QTL0-ncUhlHVTLVd5z2skEjPxr", "email": "roberto.quezada@betfanatics.com"}, {"id": "18.6", "category": "SOC Reports", "name": "AWS SOC Report", "desc": "Relevant SOC1 reports and management's evaluation for Q4", "type": "TOE", "due": "12/18/2026", "owner": "Roberto Quezada", "status": "Open", "link": "https://drive.google.com/drive/folders/1Z_dOH43ClnWkmmfs3IRjiWTVpAgYhVlH", "email": "roberto.quezada@betfanatics.com"}, {"id": "18.7", "category": "SOC Reports", "name": "Fire Hydrant SOC Reports", "desc": "Relevant SOC1 reports and management's evaluation for Q4", "type": "TOE", "due": "12/18/2026", "owner": "Norm Lee", "status": "Open", "link": "https://drive.google.com/drive/folders/1jebDcleFAMtThgCHD0cYhFKCF7PWwCQB", "email": "norm.lee@betfanatics.com"}, {"id": "18.8", "category": "SOC Reports", "name": "Azure SOC Report", "desc": "Relevant SOC1 reports and management's evaluation for Q4", "type": "TOE", "due": "12/18/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1LqYCzi3nfZs1_d6Lxp1qqczbR_pReZZt", "email": "dominick.demaio@betfanatics.com"}, {"id": "18.9", "category": "SOC Reports", "name": "Azure DevOps SOC Reports", "desc": "Relevant SOC1 reports and management's evaluation for Q4", "type": "TOE", "due": "12/18/2026", "owner": "Dom Demaio", "status": "Open", "link": "https://drive.google.com/drive/folders/1j7FDfD61k4bZchn415Ks_a3kl34S1yy_", "email": "dominick.demaio@betfanatics.com"}, {"id": "19.1", "category": "Okta Authentication", "name": "Okta Impersonation Analysis", "desc": "Please provide evidence of internal analysis performed over the Okta impersonation details for FY26. If the monitoring control is in place, please provide a sample of reviews according to the frequency of the control and KPMG's sample size guidance.", "type": "TOE", "due": "12/18/2026", "owner": "Blaine Schmidt", "status": "Open", "link": "https://drive.google.com/drive/folders/1cJ0pMK-wv6B3ZUdVJ-1OV04s9YKuqVhR", "email": "blaine.schmidt@betfanatics.com"}];
+
+// ═══════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════
+const STATUSES = ['Open','Uploaded to Google Drive','Uploaded to KPMG','Follow-Up Questions','Closed'];
+const PILL_CLASS = {
+  'Open':'p-open',
+  'Uploaded to Google Drive':'p-gdrive',
+  'Uploaded to KPMG':'p-kpmg',
+  'Follow-Up Questions':'p-followup',
+  'Closed':'p-closed'
+};
+const STATUS_COLOR = {
+  'Open':'var(--open)',
+  'Uploaded to Google Drive':'var(--gdrive)',
+  'Uploaded to KPMG':'var(--kpmg)',
+  'Follow-Up Questions':'var(--followup)',
+  'Closed':'var(--closed)'
+};
+const STATUS_SHORT = {
+  'Open':'Open',
+  'Uploaded to Google Drive':'In Google Drive',
+  'Uploaded to KPMG':'Uploaded to KPMG',
+  'Follow-Up Questions':'Follow-Up',
+  'Closed':'Closed'
+};
+const COLORS = ['#58a6ff','#3fb950','#f0883e','#d29922','#bc8cff','#ff7b72','#79c0ff','#56d364','#ffa657','#f778ba'];
+
+function avatarColor(name) {
+  let h = 0;
+  for (let i = 0; i < (name||'').length; i++) h = (h * 31 + name.charCodeAt(i)) & 0x7fffffff;
+  return COLORS[h % COLORS.length];
+}
+function initials(name) {
+  return (name||'??').split(' ').map(p => p[0] || '').join('').toUpperCase().slice(0,2);
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+function render() {
+  buildSidebar();
+  buildStats();
+  buildFilters();
+  buildTable();
+  buildOwnerGrid();
+}
+
+function buildSidebar() {
+  const counts = {};
+  STATUSES.forEach(s => counts[s] = DATA.filter(d => d.status === s).length);
+  document.getElementById('sb-total').textContent = DATA.length;
+  document.getElementById('sb-open').textContent = counts['Open'] || 0;
+  document.getElementById('sb-gdrive').textContent = counts['Uploaded to Google Drive'] || 0;
+  document.getElementById('sb-kpmg').textContent = counts['Uploaded to KPMG'] || 0;
+  document.getElementById('sb-followup').textContent = counts['Follow-Up Questions'] || 0;
+  document.getElementById('sb-closed').textContent = counts['Closed'] || 0;
+
+  const owners = [...new Set(DATA.map(d => d.owner).filter(Boolean))].sort();
+  const container = document.getElementById('sb-owners');
+  container.innerHTML = '';
+  owners.forEach(owner => {
+    const count = DATA.filter(d => d.owner === owner).length;
+    const color = avatarColor(owner);
+    const el = document.createElement('div');
+    el.className = 'sb-item';
+    el.innerHTML = `<span style="display:flex;align-items:center;gap:6px">
+      <span class="sb-avatar" style="background:${color}22;color:${color}">${initials(owner)}</span>
+      <span>${owner.split(' ')[0]}</span>
+    </span><span class="sb-count">${count}</span>`;
+    el.onclick = () => quickFilter('owner', owner, el);
+    container.appendChild(el);
+  });
+}
+
+function buildStats() {
+  const n = DATA.length;
+  const counts = {};
+  STATUSES.forEach(s => counts[s] = DATA.filter(d => d.status === s).length);
+  const done = (counts['Uploaded to KPMG'] || 0) + (counts['Closed'] || 0);
+  const pct = n > 0 ? Math.round(done / n * 100) : 0;
+
+  document.getElementById('stats-bar').innerHTML = [
+    ['s-open',    'Open',                DATA.filter(d=>d.status==='Open').length,                     'not started'],
+    ['s-gdrive',  'In Drive',            counts['Uploaded to Google Drive']||0,                         'pending KPMG upload'],
+    ['s-kpmg',    'With KPMG',           counts['Uploaded to KPMG']||0,                                 'submitted'],
+    ['s-followup','Follow-Up',           counts['Follow-Up Questions']||0,                              'needs response'],
+    ['s-closed',  'Closed',              counts['Closed']||0,                                            'accepted'],
+  ].map(([cls, label, val, sub]) =>
+    `<div class="stat ${cls}"><div class="stat-label">${label}</div><div class="stat-value">${val}</div><div class="stat-sub">${sub}</div></div>`
+  ).join('');
+
+  document.getElementById('prog-pct').textContent = pct + '%';
+  const segs = [
+    ['var(--open)',    (counts['Open']||0)/n*100],
+    ['var(--gdrive)',  (counts['Uploaded to Google Drive']||0)/n*100],
+    ['var(--kpmg)',    (counts['Uploaded to KPMG']||0)/n*100],
+    ['var(--followup)',(counts['Follow-Up Questions']||0)/n*100],
+    ['var(--closed)',  (counts['Closed']||0)/n*100],
+  ];
+  document.getElementById('prog-track').innerHTML = segs
+    .filter(s => s[1] > 0)
+    .map(s => `<div class="prog-seg" style="width:${s[1]}%;background:${s[0]}"></div>`)
+    .join('');
+}
+
+function buildFilters() {
+  const cats   = [...new Set(DATA.map(d => d.category))].sort();
+  const owners = [...new Set(DATA.map(d => d.owner).filter(Boolean))].sort();
+  const fCat   = document.getElementById('f-cat');
+  const fOwner = document.getElementById('f-owner');
+  const prevCat   = fCat.value;
+  const prevOwner = fOwner.value;
+  fCat.innerHTML   = '<option value="">All Categories</option>' + cats.map(c => `<option${c===prevCat?' selected':''}>${c}</option>`).join('');
+  fOwner.innerHTML = '<option value="">All Owners</option>'     + owners.map(o => `<option${o===prevOwner?' selected':''}>${o}</option>`).join('');
+}
+
+function buildTable() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  DATA.forEach(item => {
+    const tr = document.createElement('tr');
+    tr.dataset.name     = item.name.toLowerCase();
+    tr.dataset.category = item.category;
+    tr.dataset.owner    = item.owner;
+    tr.dataset.status   = item.status;
+
+    let dueClass = 'due-ok';
+    if (item.due) {
+      const [m,d,y] = item.due.split('/');
+      const dt = new Date(+y, +m-1, +d);
+      const diff = Math.round((dt - today) / 86400000);
+      if (diff < 0) dueClass = 'due-over';
+      else if (diff <= 7) dueClass = 'due-soon';
+    }
+
+    const color = avatarColor(item.owner);
+    const pc    = PILL_CLASS[item.status] || 'p-open';
+    const ps    = STATUS_SHORT[item.status] || item.status;
+
+    tr.innerHTML = `
+      <td class="td-id">${item.id}</td>
+      <td class="td-name">${item.name}</td>
+      <td class="td-cat">${item.category}</td>
+      <td class="td-owner"><div class="owner-cell">
+        <div class="avatar" style="background:${color}22;color:${color}">${initials(item.owner)}</div>
+        <span class="owner-name">${item.owner}</span>
+      </div></td>
+      <td class="td-due"><span class="${dueClass}">${item.due||'—'}</span></td>
+      <td class="td-type">${item.type}</td>
+      <td class="td-status"><span class="pill ${pc}"><span class="pill-dot"></span>${ps}</span></td>
+      <td class="td-link">${item.link ? `<a class="drive-btn" href="${item.link}" target="_blank" onclick="event.stopPropagation()" title="Open Drive folder">📁</a>` : ''}</td>`;
+    tr.onclick = () => openModal(item);
+    tbody.appendChild(tr);
+  });
+  applyFilters();
+}
+
+function buildOwnerGrid() {
+  const owners = [...new Set(DATA.map(d => d.owner).filter(Boolean))].sort();
+  const grid = document.getElementById('owner-grid');
+  grid.innerHTML = '';
+  owners.forEach(owner => {
+    const items = DATA.filter(d => d.owner === owner);
+    const total = items.length;
+    const color = avatarColor(owner);
+    const card  = document.createElement('div');
+    card.className = 'owner-card';
+    card.onclick = () => { setInner('items', document.querySelectorAll('.inner-tab')[0]); quickFilter('owner', owner, null); };
+
+    const barColors = {'Open':'var(--open)','Uploaded to Google Drive':'var(--gdrive)','Uploaded to KPMG':'var(--kpmg)','Follow-Up Questions':'var(--followup)','Closed':'var(--closed)'};
+    const bars = STATUSES.map(s => {
+      const n = items.filter(d => d.status === s).length;
+      const w = total > 0 ? (n / total * 100) : 0;
+      return `<div class="oc-bar-row">
+        <div class="oc-bar-label">${STATUS_SHORT[s]}</div>
+        <div class="oc-bar-track"><div class="oc-bar-fill" style="width:${w}%;background:${barColors[s]}"></div></div>
+        <div class="oc-bar-n">${n}</div>
+      </div>`;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="oc-head">
+        <div class="oc-avatar" style="background:${color}22;color:${color}">${initials(owner)}</div>
+        <div><div class="oc-name">${owner}</div><div class="oc-total">${total} items</div></div>
+      </div>
+      <div class="oc-bars">${bars}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════
+// FILTERING
+// ═══════════════════════════════════════════
+function applyFilters() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const cat    = document.getElementById('f-cat').value;
+  const owner  = document.getElementById('f-owner').value;
+  const status = document.getElementById('f-status').value;
+  let visible  = 0;
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    const show =
+      (!search || tr.dataset.name.includes(search) || tr.dataset.category.toLowerCase().includes(search) || tr.dataset.owner.toLowerCase().includes(search)) &&
+      (!cat    || tr.dataset.category === cat) &&
+      (!owner  || tr.dataset.owner === owner) &&
+      (!status || tr.dataset.status === status);
+    tr.classList.toggle('hidden', !show);
+    if (show) visible++;
+  });
+  document.getElementById('row-count').textContent = visible + ' item' + (visible !== 1 ? 's' : '');
+  document.getElementById('empty').style.display = visible === 0 ? 'block' : 'none';
+}
+
+function quickFilter(type, val, el) {
+  setInner('items', document.querySelectorAll('.inner-tab')[0]);
+  if (type === 'status') document.getElementById('f-status').value = val;
+  if (type === 'owner')  document.getElementById('f-owner').value  = val;
+  document.getElementById('f-cat').value    = '';
+  document.getElementById('search').value  = '';
+  applyFilters();
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('view-items').classList.add('active');
+  if (el) el.classList.add('active');
+}
+
+// ═══════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════
+function setTab(view, el) {
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  setInner(view, document.querySelectorAll('.inner-tab')[view === 'items' ? 0 : 1]);
+}
+
+function setInner(view, el) {
+  document.getElementById('panel-items').style.display  = view === 'items'  ? 'block' : 'none';
+  document.getElementById('panel-owners').style.display = view === 'owners' ? 'block' : 'none';
+  document.querySelectorAll('.inner-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  else document.querySelectorAll('.inner-tab')[view === 'items' ? 0 : 1].classList.add('active');
+}
+
+function switchAudit(type, btn) {
+  document.querySelectorAll('.audit-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('view-itgc').style.display    = type === 'itgc' ? 'block' : 'none';
+  document.getElementById('view-coming').style.display  = type !== 'itgc' ? 'flex'  : 'none';
+}
+
+// ═══════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════
+function openModal(item) {
+  document.getElementById('m-id').textContent    = 'Request ' + item.id;
+  document.getElementById('m-title').textContent = item.name;
+  document.getElementById('m-cat').textContent   = item.category;
+  document.getElementById('m-owner').textContent = item.owner || '—';
+  document.getElementById('m-due').textContent   = item.due   || '—';
+  document.getElementById('m-desc').textContent  = item.desc;
+  const statusEl = document.getElementById('m-status');
+  statusEl.textContent  = item.status;
+  statusEl.style.color  = STATUS_COLOR[item.status] || 'var(--text)';
+  const link = document.getElementById('m-link');
+  link.href             = item.link || '#';
+  link.style.display    = item.link ? 'inline-flex' : 'none';
+  document.getElementById('backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(e) { if (e.target === document.getElementById('backdrop')) closeModalNow(); }
+function closeModalNow() {
+  document.getElementById('backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModalNow(); });
+
+// ═══════════════════════════════════════════
+// CSV PARSER
+// ═══════════════════════════════════════════
+function parseCSV(text) {
+  const lines = text.split('\n');
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const cols = [];
+    let inQ = false, cur = '';
+    for (let j = 0; j < line.length; j++) {
+      const ch = line[j];
+      if (ch === '"' && line[j+1] === '"') { cur += '"'; j++; }
+      else if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else { cur += ch; }
+    }
+    cols.push(cur);
+    if (!cols[2]) continue;
+    out.push({
+      category: (cols[0]||'').trim(),
+      id:       (cols[1]||'').trim(),
+      name:     (cols[2]||'').trim(),
+      desc:     (cols[3]||'').trim(),
+      type:     (cols[4]||'').trim(),
+      due:      (cols[5]||'').trim(),
+      owner:    (cols[6]||'').trim(),
+      status:   (cols[7]||'Open').trim(),
+      link:     (cols[8]||'').trim(),
+      email:    (cols[14]||'').trim(),
+    });
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════
+// SHEET POLLING
+// ═══════════════════════════════════════════
+function pollSheet() {
+  fetch(CSV_URL)
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+    .then(text => {
+      const fresh = parseCSV(text).filter(d => d.id && d.id !== 'ID' && d.name && d.name !== 'Name');
+      if (fresh.length === 0) return;
+      DATA = fresh;
+      render();
+      const el = document.getElementById('sync-label');
+      el.textContent = 'Synced ' + new Date().toLocaleTimeString();
+      el.style.opacity = '1';
+      setTimeout(() => el.style.opacity = '0.4', 3000);
+    })
+    .catch(err => {
+      console.warn('[PBC] poll failed (fetch):', err.message);
+      pollViaGviz();
+    });
+}
+
+function pollViaGviz() {
+  const cb = 'gviz_' + Date.now();
+  const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+    '/gviz/tq?tqx=out:json%3BresponseHandler:' + cb + '&gid=' + GID;
+  const script = document.createElement('script');
+  const timer  = setTimeout(() => { delete window[cb]; }, 8000);
+  window[cb]   = function(resp) {
+    clearTimeout(timer);
+    delete window[cb];
+    try { document.head.removeChild(script); } catch(e) {}
+    if (!resp || !resp.table) return;
+    const rows = resp.table.rows || [];
+    const fresh = [];
+    rows.forEach(row => {
+      if (!row || !row.c) return;
+      const v = idx => (row.c[idx] && row.c[idx].v != null) ? String(row.c[idx].v).trim() : '';
+      const id = v(1), name = v(2);
+      if (!id || !name || id === 'ID' || name === 'Name') return;
+      fresh.push({ category:v(0), id, name, desc:v(3), type:v(4), due:v(5), owner:v(6), status:v(7)||'Open', link:v(8), email:v(14) });
+    });
+    if (fresh.length === 0) return;
+    DATA = fresh;
+    render();
+    const el = document.getElementById('sync-label');
+    el.textContent = 'Synced ' + new Date().toLocaleTimeString();
+    el.style.opacity = '1';
+    setTimeout(() => el.style.opacity = '0.4', 3000);
+  };
+  script.onerror = () => { clearTimeout(timer); };
+  script.src = url;
+  document.head.appendChild(script);
+}
+
+// ═══════════════════════════════════════════
+// STARTUP
+// ═══════════════════════════════════════════
+render();
+// Start polling: first attempt after 5s, then every 60s
+setTimeout(() => { pollSheet(); setInterval(pollSheet, POLL_MS); }, 5000);
+</script>
+</body>
+</html>

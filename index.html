@@ -1,8 +1,3 @@
-bash
-
-sed -n '1,240p' /mnt/user-data/outputs/fbg_audit_tracker.html
-Output
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -243,12 +238,7 @@ td{padding:9px 10px;vertical-align:middle}
             <div class="prog-head">
               <span class="prog-title">OVERALL COMPLETION (Uploaded to KPMG + Closed)</span>
               <span class="prog-pct" id="prog-pct">0%</span>
-bash
-
-sed -n '241,480p' /mnt/user-data/outputs/fbg_audit_tracker.html
-Output
-
-            </div>
+</div>
             <div class="prog-track" id="prog-track"></div>
           </div>
         </div>
@@ -488,12 +478,7 @@ function buildTable() {
       const diff = Math.round((dt - today) / 86400000);
       if (diff < 0) dueClass = 'due-over';
       else if (diff <= 7) dueClass = 'due-soon';
-bash
-
-sed -n '481,721p' /mnt/user-data/outputs/fbg_audit_tracker.html
-Output
-
-    }
+ }
 
     const color = avatarColor(item.owner);
     const pc    = PILL_CLASS[item.status] || 'p-open';
@@ -734,7 +719,6 @@ function pollViaGviz() {
 render();
 // Show connecting state immediately
 document.getElementById('sync-label').textContent = '⟳ Connecting to sheet…';
-
 
 // Start polling: first attempt after 5s, then every 60s
 setTimeout(() => { pollSheet(); setInterval(pollSheet, POLL_MS); }, 5000);

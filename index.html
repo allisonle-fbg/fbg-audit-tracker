@@ -1,3 +1,8 @@
+bash
+
+sed -n '1,240p' /mnt/user-data/outputs/fbg_audit_tracker.html
+Output
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,7 +22,7 @@
   --closed:#6e7681;  --closed-bg:rgba(110,118,129,.12);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;height:100vh;max-height:100vh;overflow:hidden;display:flex;flex-direction:column}
 
 /* TOPBAR */
 .topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:50}
@@ -31,7 +36,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .audit-tab.dim{opacity:.35;cursor:default;pointer-events:none}
 
 /* LAYOUT */
-.layout{display:flex;flex:1;overflow:hidden}
+.layout{display:flex;flex:1;overflow:hidden;min-height:0}
 
 /* SIDEBAR */
 .sidebar{width:210px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:12px 0}
@@ -45,7 +50,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .sb-avatar{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0}
 
 /* MAIN */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 
 /* INNER TABS */
 .inner-tabs{display:flex;padding:12px 20px 0;border-bottom:1px solid var(--border);flex-shrink:0}
@@ -54,7 +59,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .inner-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
 /* SCROLLABLE CONTENT */
-.content{flex:1;overflow-y:auto}
+.content{flex:1;overflow-y:auto;min-height:0}
 
 /* STATS */
 .stats{display:flex;gap:10px;padding:16px 20px 0;flex-wrap:wrap}
@@ -88,7 +93,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .filter option{background:var(--surface2)}
 .tb-right{margin-left:auto;display:flex;align-items:center;gap:10px}
 .row-count{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);padding:4px 10px;background:var(--surface);border:1px solid var(--border);border-radius:99px}
-.sync-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);transition:opacity 1s}
+.sync-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim)}.sync-label.ok{color:var(--gdrive)}.sync-label.err{color:#f85149}
 
 /* TABLE */
 .table-wrap{padding:0 20px 20px;overflow-x:auto}
@@ -238,6 +243,11 @@ td{padding:9px 10px;vertical-align:middle}
             <div class="prog-head">
               <span class="prog-title">OVERALL COMPLETION (Uploaded to KPMG + Closed)</span>
               <span class="prog-pct" id="prog-pct">0%</span>
+bash
+
+sed -n '241,480p' /mnt/user-data/outputs/fbg_audit_tracker.html
+Output
+
             </div>
             <div class="prog-track" id="prog-track"></div>
           </div>
@@ -478,6 +488,11 @@ function buildTable() {
       const diff = Math.round((dt - today) / 86400000);
       if (diff < 0) dueClass = 'due-over';
       else if (diff <= 7) dueClass = 'due-soon';
+bash
+
+sed -n '481,721p' /mnt/user-data/outputs/fbg_audit_tracker.html
+Output
+
     }
 
     const color = avatarColor(item.owner);
@@ -667,9 +682,8 @@ function pollSheet() {
       DATA = fresh;
       render();
       const el = document.getElementById('sync-label');
-      el.textContent = 'Synced ' + new Date().toLocaleTimeString();
-      el.style.opacity = '1';
-      setTimeout(() => el.style.opacity = '0.4', 3000);
+      el.textContent = '✓ Synced ' + new Date().toLocaleTimeString();
+      el.className = 'sync-label ok';
     })
     .catch(err => {
       console.warn('[PBC] poll failed (fetch):', err.message);
@@ -701,11 +715,15 @@ function pollViaGviz() {
     DATA = fresh;
     render();
     const el = document.getElementById('sync-label');
-    el.textContent = 'Synced ' + new Date().toLocaleTimeString();
-    el.style.opacity = '1';
-    setTimeout(() => el.style.opacity = '0.4', 3000);
+    el.textContent = '✓ Synced ' + new Date().toLocaleTimeString();
+    el.className = 'sync-label ok';
   };
-  script.onerror = () => { clearTimeout(timer); };
+  script.onerror = () => {
+    clearTimeout(timer);
+    const el = document.getElementById('sync-label');
+    el.textContent = '⚠ Sync failed — check sheet is published';
+    el.className = 'sync-label err';
+  };
   script.src = url;
   document.head.appendChild(script);
 }
@@ -714,6 +732,10 @@ function pollViaGviz() {
 // STARTUP
 // ═══════════════════════════════════════════
 render();
+// Show connecting state immediately
+document.getElementById('sync-label').textContent = '⟳ Connecting to sheet…';
+
+
 // Start polling: first attempt after 5s, then every 60s
 setTimeout(() => { pollSheet(); setInterval(pollSheet, POLL_MS); }, 5000);
 </script>
